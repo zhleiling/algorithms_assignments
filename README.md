@@ -1,4 +1,4 @@
-algorithms_assignment_queues
+algorithms_assignments
 ============================
 
-Assignment for week 2 in algorithms course 
+Assignments in algorithms course 
