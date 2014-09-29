@@ -27,6 +27,7 @@ public class Point implements Comparable<Point> {
 				return 0;
 			}
 		}
+		
 	}; // YOUR DEFINITION HERE
 
 	private final int x; // x coordinate
@@ -102,6 +103,6 @@ public class Point implements Comparable<Point> {
 		/* YOUR CODE HERE */
 		System.out.println(1.0 / 0.0);
 		System.out.println(-1.0 / 0.0);
-		System.out.println(1.0 / 0.0 > 1.0 / 1.0);
+		System.out.println(1.0 / 0.0 > 1000000000);
 	}
 }
