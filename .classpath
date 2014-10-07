@@ -3,6 +3,7 @@
 	<classpathentry kind="src" path="queues"/>
 	<classpathentry kind="src" path="percolation"/>
 	<classpathentry kind="src" path="pattern_recognition"/>
+	<classpathentry kind="src" path="8puzzle"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/algs4.jar"/>
 	<classpathentry kind="lib" path="lib/stdlib.jar"/>
