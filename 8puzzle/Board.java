@@ -11,7 +11,7 @@ public class Board {
 	private int ham;
 	private int man;
 
-	private Queue<Board> neighborQueue = new Queue<Board>();
+	
 
 	/**
 	 * constructor.
@@ -125,11 +125,11 @@ public class Board {
 	 * @return
 	 */
 	public Iterable<Board> neighbors() {
-		getNeighbors();
 		return new Iterable<Board>() {
-
+		    private Queue<Board> neighborQueue = new Queue<Board>();
 			@Override
 			public Iterator<Board> iterator() {
+			    getNeighbors(neighborQueue);
 				return new Iterator<Board>() {
 
 					@Override
@@ -150,7 +150,7 @@ public class Board {
 		};
 	}
 
-	private void getNeighbors() {
+	private void getNeighbors(Queue<Board> neighborQueue) {
 		int[][] neighbor = new int[N][N];
 		int x = 0;
 		int y = 0;
