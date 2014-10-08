@@ -18,7 +18,6 @@ public class Solver {
     private MinPQ<PriorityBoard> queue;
     private MinPQ<PriorityBoard> twinQueue;
 
-    private boolean hasDetect;
     private boolean solveable;
 
     private Queue<Board> solutionQueue = new Queue<Board>();
@@ -34,10 +33,30 @@ public class Solver {
         twinMoves = moves = 0;
         queue = new MinPQ(new BoardComparator<PriorityBoard>());
         twinQueue = new MinPQ(new BoardComparator<PriorityBoard>());
-        queue.insert(new PriorityBoard(search, moves));
+        queue.insert(new PriorityBoard(search, 0));
         twinSearch = search.twin();
         twinQueue.insert(new PriorityBoard(twinSearch, twinMoves));
-        hasDetect = false;
+        Thread detectThread = new DetectThread();
+        Thread detectTwinThread = new DetectTwinThread();
+
+        detectThread.start();
+        detectTwinThread.start();
+
+        while (detectThread.isAlive() && detectTwinThread.isAlive()) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (detectThread.isAlive()) {
+            detectThread.interrupt();
+            solveable = false;
+        } else {
+            detectTwinThread.interrupt();
+            solveable = true;
+        }
     }
 
     private class PriorityBoard {
@@ -68,32 +87,6 @@ public class Solver {
      * @return is the initial board solvable?
      */
     public boolean isSolvable() {
-        if (hasDetect) {
-            return solveable;
-        }
-        Thread detectThread = new DetectThread();
-        Thread detectTwinThread = new DetectTwinThread();
-
-        detectThread.start();
-        detectTwinThread.start();
-
-        while (detectThread.isAlive() && detectTwinThread.isAlive()) {
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-
-        if (detectThread.isAlive()) {
-            detectThread.interrupt();
-            solveable = false;
-        } else {
-            detectTwinThread.interrupt();
-            solveable = true;
-        }
-
-        hasDetect = true;
         return solveable;
 
     }
@@ -110,11 +103,11 @@ public class Solver {
                 search = pb.board;
                 for (Board b : search.neighbors()) {
                     if (!previousSet.contains(b)) {
-                        queue.insert(new PriorityBoard(b, moves));
+                        queue.insert(new PriorityBoard(b, pb.moves + 1));
                     }
                 }
                 solutionQueue.enqueue(search);
-                moves++;
+                moves = pb.moves;
             }
         }
     }
@@ -131,10 +124,9 @@ public class Solver {
                 twinSearch = pb.board;
                 for (Board b : twinSearch.neighbors()) {
                     if (!previousSet.contains(b)) {
-                        twinQueue.insert(new PriorityBoard(b, twinMoves));
+                        twinQueue.insert(new PriorityBoard(b, pb.moves + 1));
                     }
                 }
-                twinMoves++;
             }
         }
     }
@@ -146,7 +138,7 @@ public class Solver {
      */
     public int moves() {
         if (isSolvable()) {
-            return moves == 0 ? 0 : moves - 1;
+            return moves;
         } else {
             return -1;
         }
@@ -156,7 +148,11 @@ public class Solver {
      * @return sequence of boards in a shortest solution; null if unsolvable
      */
     public Iterable<Board> solution() {
-        return new solveIterable<Board>();
+        if(!solveable){
+            return null;
+        }else{
+            return new solveIterable<Board>();
+        }
     }
 
     private class solveIterable<E> implements Iterable<Board> {
