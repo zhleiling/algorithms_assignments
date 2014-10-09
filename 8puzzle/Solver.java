@@ -1,7 +1,5 @@
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
 
 /**
  * 
@@ -9,18 +7,17 @@ import java.util.Set;
  * 
  */
 public class Solver {
-    private Board search;
+    private PriorityBoard searchNode;
     private int moves;
 
-    private Board twinSearch;
-    private int twinMoves;
+    private PriorityBoard twinSearchNode;
 
     private MinPQ<PriorityBoard> queue;
     private MinPQ<PriorityBoard> twinQueue;
 
+    private boolean hasProcessed;
     private boolean solveable;
-
-    private Queue<Board> solutionQueue = new Queue<Board>();
+    private Stack<Board> solutionStack = new Stack<Board>();
 
     /**
      * constructor,to find a solution to the initial board (using the A*
@@ -29,13 +26,20 @@ public class Solver {
      * @param initial
      */
     public Solver(Board initial) {
-        this.search = initial;
-        twinMoves = moves = 0;
         queue = new MinPQ(new BoardComparator<PriorityBoard>());
         twinQueue = new MinPQ(new BoardComparator<PriorityBoard>());
-        queue.insert(new PriorityBoard(search, 0));
-        twinSearch = search.twin();
-        twinQueue.insert(new PriorityBoard(twinSearch, twinMoves));
+        this.searchNode = new PriorityBoard(initial, 0, null);
+        twinSearchNode = new PriorityBoard(initial.twin(), 0, null);
+        moves = 0;
+        hasProcessed = false;
+    }
+
+    private void process() {
+        if (hasProcessed) {
+            return;
+        }
+        queue.insert(searchNode);
+        twinQueue.insert(twinSearchNode);
         Thread detectThread = new DetectThread();
         Thread detectTwinThread = new DetectTwinThread();
 
@@ -57,16 +61,24 @@ public class Solver {
             detectTwinThread.interrupt();
             solveable = true;
         }
+        hasProcessed = true;
     }
 
+    /**
+     * PriorityBoard, a Board with priority and previous pointer.
+     * 
+     * @author zhanglei01
+     */
     private class PriorityBoard {
-        public PriorityBoard(Board board, int moves) {
-            this.board = board;
-            this.moves = moves;
-        }
-
         private Board board;
         private int moves;
+        private PriorityBoard previous;
+
+        public PriorityBoard(Board board, int moves, PriorityBoard previous) {
+            this.board = board;
+            this.moves = moves;
+            this.previous = previous;
+        }
     }
 
     private class BoardComparator<E> implements Comparator<PriorityBoard> {
@@ -87,27 +99,25 @@ public class Solver {
      * @return is the initial board solvable?
      */
     public boolean isSolvable() {
+        if (!hasProcessed) {
+            process();
+        }
         return solveable;
-
     }
 
     private class DetectThread extends Thread {
         @Override
         public void run() {
-            Set<Board> previousSet = new HashSet<Board>();
-            while (!search.isGoal() && !isInterrupted()) {
-                // StdOut.println("Self:"+Thread.currentThread() + " : " +
-                // search);
-                previousSet.add(search);
-                PriorityBoard pb = queue.delMin();
-                search = pb.board;
-                for (Board b : search.neighbors()) {
-                    if (!previousSet.contains(b)) {
-                        queue.insert(new PriorityBoard(b, pb.moves + 1));
+            while (!searchNode.board.isGoal() && !isInterrupted()) {
+                searchNode = queue.delMin();
+                for (Board b : searchNode.board.neighbors()) {
+                    if (searchNode.previous == null
+                            || !b.equals(searchNode.previous.board)) {
+                        queue.insert(new PriorityBoard(b, searchNode.moves + 1,
+                                searchNode));
                     }
                 }
-                solutionQueue.enqueue(search);
-                moves = pb.moves;
+                moves = searchNode.moves;
             }
         }
     }
@@ -115,16 +125,13 @@ public class Solver {
     private class DetectTwinThread extends Thread {
         @Override
         public void run() {
-            Set<Board> previousSet = new HashSet<Board>();
-            while (!twinSearch.isGoal() && !isInterrupted()) {
-//                StdOut.println("Twin:" + Thread.currentThread() + " : "
-//                        + twinSearch);
-                previousSet.add(twinSearch);
-                PriorityBoard pb = twinQueue.delMin();
-                twinSearch = pb.board;
-                for (Board b : twinSearch.neighbors()) {
-                    if (!previousSet.contains(b)) {
-                        twinQueue.insert(new PriorityBoard(b, pb.moves + 1));
+            while (!twinSearchNode.board.isGoal() && !isInterrupted()) {
+                twinSearchNode = twinQueue.delMin();
+                for (Board b : twinSearchNode.board.neighbors()) {
+                    if (twinSearchNode.previous == null
+                            || !b.equals(twinSearchNode.previous.board)) {
+                        twinQueue.insert(new PriorityBoard(b,
+                                twinSearchNode.moves + 1, twinSearchNode));
                     }
                 }
             }
@@ -137,7 +144,10 @@ public class Solver {
      * @return
      */
     public int moves() {
-        if (isSolvable()) {
+        if (!hasProcessed) {
+            process();
+        }
+        if (solveable) {
             return moves;
         } else {
             return -1;
@@ -148,35 +158,26 @@ public class Solver {
      * @return sequence of boards in a shortest solution; null if unsolvable
      */
     public Iterable<Board> solution() {
-        if(!solveable){
-            return null;
-        }else{
-            return new solveIterable<Board>();
+        if (!hasProcessed) {
+            process();
         }
-    }
-
-    private class solveIterable<E> implements Iterable<Board> {
-
-        @Override
-        public Iterator<Board> iterator() {
-            return new Iterator<Board>() {
-
+        if (!solveable) {
+            return null;
+        } else {
+            solutionStack = new Stack<Board>();
+            PriorityBoard currNode = new PriorityBoard(searchNode.board,
+                    searchNode.moves, searchNode.previous);
+            do {
+                solutionStack.push(currNode.board);
+                currNode = currNode.previous;
+            } while (currNode != null);
+            return new Iterable<Board>() {
                 @Override
-                public boolean hasNext() {
-                    return !solutionQueue.isEmpty();
-                }
-
-                @Override
-                public Board next() {
-                    return solutionQueue.dequeue();
-                }
-
-                @Override
-                public void remove() {
+                public Iterator<Board> iterator() {
+                    return solutionStack.iterator();
                 }
             };
         }
-
     }
 
     /**
@@ -202,8 +203,11 @@ public class Solver {
             StdOut.println("No solution possible");
         else {
             StdOut.println("Minimum number of moves = " + solver.moves());
-            for (Board board : solver.solution())
+            for (Board board : solver.solution()) {
+                StdOut.println(solver.moves());
                 StdOut.println(board);
+            }
+
         }
     }
 }
