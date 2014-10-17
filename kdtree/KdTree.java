@@ -1,5 +1,3 @@
-import java.util.Iterator;
-
 /** 
  * Project Name : algorithms_assignments 
  * File Name : KdTree.java 
@@ -18,126 +16,170 @@ import java.util.Iterator;
  * @since JDK 1.6
  */
 public class KdTree {
-	private BST<Point2D, Node> kdTree;
-	private Node root;
-	
-	private static class Node{
-		private Point2D p;		// the point
-		private RectHV rectHV;	// the axis-aligned rectangle corresponding to this node
-		private Node lb;		// the left/bottom subtree
-		private Node rt;		// the right/top subtree
-		
-		public Node(Point2D p, RectHV rectHV, Node lb, Node rt) {
-			this.p = p;
-			this.rectHV = rectHV;
-			this.lb = lb;
-			this.rt = rt;
-		}
-	}
+    private Node root;
 
-	/**
-	 * constructor
-	 */
-	public KdTree() {
-		root = new Node(p, rectHV, null, null);
-	}
+    private static class Node {
+        private Point2D p; // the point
+        private RectHV rectHV; // the axis-aligned rectangle corresponding to
+                               // this node
+        private Node lb; // the left/bottom subtree
+        private Node rt; // the right/top subtree
 
-	/**
-	 * @return is the set empty?
-	 */
-	public boolean isEmpty() {
-		return kdTree.size() == 0;
-	}
+        public Node(Point2D p, RectHV rectHV, Node lb, Node rt) {
+            this.p = p;
+            this.rectHV = rectHV;
+            this.lb = lb;
+            this.rt = rt;
+        }
+    }
 
-	/**
-	 * @return number of points in the set.
-	 */
-	public int size() {
-		return kdTree.size();
-	}
+    /**
+     * constructor
+     */
+    public KdTree() {
+    }
 
-	/**
-	 * add the point to the set (if it is not already in the set).
-	 * 
-	 * @param p
-	 */
-	public void insert(Point2D p) {
-		
-		if(root == null){
-			root = 
-			root.p = p;
-		}
-		
-		kdTree.put(p, node);
-	}
+    /**
+     * @return is the set empty?
+     */
+    public boolean isEmpty() {
+        return size() == 0;
+    }
 
-	/**
-	 * @param p
-	 * @return does the set contain point p?
-	 */
-	public boolean contains(Point2D p) {
-		return kdTree.contains(p);
-	}
+    /**
+     * @return number of points in the set.
+     */
+    public int size() {
+        return size(root);
+    }
 
-	/**
-	 * draw all points to standard draw.
-	 */
-	public void draw() {
-		for (Point2D p : pointSET) {
-			StdDraw.point(p.x(), p.y());
-		}
-	}
+    private int size(Node node) {
+        if (node == null) {
+            return 0;
+        } else {
+            return 1 + size(node.lb) + size(node.rt);
+        }
+    }
 
-	/**
-	 * @param rect
-	 * @return all points that are inside the rectangle
-	 */
-	public Iterable<Point2D> range(RectHV rect) {
-		
-		final SET<Point2D> inSET = new SET<Point2D>();
-		for (Point2D point2d : pointSET) {
-			if (rect.contains(point2d)) {
-				inSET.add(point2d);
-			}
-		}
-		return new Iterable<Point2D>() {
-			
-			@Override
-			public Iterator<Point2D> iterator() {
+    /**
+     * add the point to the set (if it is not already in the set).
+     * 
+     * @param p
+     */
+    public void insert(Point2D p) {
 
-				return inSET.iterator();
-			}
-		};
-	}
+        if (p == null)
+            return;
+        root = insert(root, p, true);
 
-	/**
-	 * @param p
-	 * @return a nearest neighbor in the set to point p; null if the set is
-	 *         empty.
-	 */
-	public Point2D nearest(Point2D p) {
+    }
 
-		if (isEmpty()) {
-			return null;
-		}
-		double min = -1.0;
-		Point2D minPoint2d = null;
+    private Node insert(Node node, Point2D p, boolean vertcial) {
+        if (node == null)
+            return new Node(p, new RectHV(0, 0, 1, 1), null, null);
 
-		for (Point2D point : pointSET) {
-			if (min == -1.0 || point.distanceTo(p) < min) {
-				min = point.distanceTo(p);
-				minPoint2d = point;
-			}
-		}
-		return minPoint2d;
-	}
+        if (p.equals(node.p))
+            return node;
 
-	/**
-	 * unit testing of the methods。
-	 * 
-	 * @param args
-	 */
-	public static void main(String[] args) {
+        // vertical
+        if (vertcial) {
+            if (p.x() < node.p.x()) {
+                node.lb = insert(node.lb, p, false);
+                node.lb.rectHV = new RectHV(node.rectHV.xmin(),
+                        node.rectHV.ymin(), node.p.x(), node.rectHV.ymax());
+            } else {
+                node.rt = insert(node.rt, p, false);
+                node.rt.rectHV = new RectHV(node.p.x(), node.rectHV.ymin(),
+                        node.rectHV.xmax(), node.rectHV.ymax());
+            }
+            // horizontal
+        } else {
+            if (p.y() < node.p.y()) {
+                node.lb = insert(node.lb, p, true);
+                node.lb.rectHV = new RectHV(node.rectHV.xmin(),
+                        node.rectHV.ymin(), node.rectHV.xmax(), node.p.y());
+            } else {
+                node.rt = insert(node.rt, p, true);
+                node.rt.rectHV = new RectHV(node.rectHV.xmin(), node.p.y(),
+                        node.rectHV.xmax(), node.rectHV.ymax());
+            }
+        }
 
-	}
+        return node;
+
+    }
+
+    /**
+     * @param p
+     * @return does the set contain point p?
+     */
+    public boolean contains(Point2D p) {
+        return contains(root, p, true);
+    }
+
+    private boolean contains(Node node, Point2D p, boolean vertical) {
+        if (node == null || p == null) {
+            return false;
+        }
+        if (p.equals(node.p)) {
+            return true;
+        }
+
+        if (vertical) {
+            if (p.x() < node.p.x()) {
+                return contains(node.lb, p, false);
+            } else {
+                return contains(node.rt, p, false);
+            }
+        } else {
+            if (p.y() < node.p.y()) {
+                return contains(node.lb, p, true);
+            } else {
+                return contains(node.rt, p, true);
+            }
+        }
+
+    }
+
+    /**
+     * draw all points to standard draw.
+     */
+    public void draw() {
+        // TODO
+    }
+
+    /**
+     * @param rect
+     * @return all points that are inside the rectangle
+     */
+    public Iterable<Point2D> range(RectHV rect) {
+        // TODO
+        return null;
+    }
+
+    /**
+     * @param p
+     * @return a nearest neighbor in the set to point p; null if the set is
+     *         empty.
+     */
+    public Point2D nearest(Point2D p) {
+        // TOD
+        return null;
+    }
+
+    /**
+     * unit testing of the methods。
+     * 
+     * @param args
+     */
+    public static void main(String[] args) {
+        // TODO
+        KdTree kdTree = new KdTree();
+        StdOut.println(kdTree.contains(new Point2D(0.5, 0.5)));
+        kdTree.insert(new Point2D(0.5, 0.8));
+        StdOut.println(kdTree.contains(new Point2D(0.5, 0.6)));
+        StdOut.println(kdTree.contains(new Point2D(0.5, 0.5)));
+        StdOut.println(kdTree.contains(new Point2D(0.5, 0.8)));
+        StdOut.println(kdTree.contains(new Point2D(0.5, 0.0)));
+    }
 }
