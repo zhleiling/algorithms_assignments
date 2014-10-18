@@ -145,7 +145,34 @@ public class KdTree {
      * draw all points to standard draw.
      */
     public void draw() {
-        // TODO
+        if (root != null) {
+            root.rectHV.draw();
+            draw(root, true);
+        }
+    }
+
+    private void draw(Node node, boolean vertical) {
+        if (node == null) {
+            return;
+        }
+        StdDraw.setPenColor(StdDraw.BLACK);
+        StdDraw.setPenRadius(.01);
+        StdDraw.point(node.p.x(), node.p.y());
+
+        StdDraw.setPenRadius();
+        if (vertical) {
+            StdDraw.setPenColor(StdDraw.RED);
+            StdDraw.line(node.p.x(), node.rectHV.ymin(), node.p.x(),
+                    node.rectHV.ymax());
+        } else {
+            StdDraw.setPenColor(StdDraw.BLUE);
+            StdDraw.line(node.rectHV.xmin(), node.p.y(), node.rectHV.xmax(),
+                    node.p.y());
+        }
+
+        draw(node.lb, !vertical);
+        draw(node.rt, !vertical);
+
     }
 
     /**
@@ -173,7 +200,7 @@ public class KdTree {
      * @param args
      */
     public static void main(String[] args) {
-        // TODO
+        // simple test for insert and contains
         KdTree kdTree = new KdTree();
         StdOut.println(kdTree.contains(new Point2D(0.5, 0.5)));
         kdTree.insert(new Point2D(0.5, 0.8));
@@ -181,5 +208,14 @@ public class KdTree {
         StdOut.println(kdTree.contains(new Point2D(0.5, 0.5)));
         StdOut.println(kdTree.contains(new Point2D(0.5, 0.8)));
         StdOut.println(kdTree.contains(new Point2D(0.5, 0.0)));
+
+        // simple test for draw
+        kdTree = new KdTree();
+        kdTree.insert(new Point2D(0.7, 0.2));
+        kdTree.insert(new Point2D(0.5, 0.4));
+        kdTree.insert(new Point2D(0.2, 0.3));
+        kdTree.insert(new Point2D(0.4, 0.7));
+        kdTree.insert(new Point2D(0.9, 0.6));
+        kdTree.draw();
     }
 }
