@@ -1,3 +1,5 @@
+import java.util.Iterator;
+
 /** 
  * Project Name : algorithms_assignments 
  * File Name : KdTree.java 
@@ -8,7 +10,7 @@
 
 /**
  * ClassName : KdTree <br/>
- * Description : TODO ADD FUNCTION. <br/>
+ * Description : KdTree <br/>
  * date: Oct 17, 2014 4:22:38 PM <br/>
  * 
  * @author zhanglei01
@@ -17,6 +19,8 @@
  */
 public class KdTree {
     private Node root;
+
+    private int size;
 
     private static class Node {
         private Point2D p; // the point
@@ -37,6 +41,7 @@ public class KdTree {
      * constructor
      */
     public KdTree() {
+        size = 0;
     }
 
     /**
@@ -50,16 +55,17 @@ public class KdTree {
      * @return number of points in the set.
      */
     public int size() {
-        return size(root);
+        // return size(root);
+        return size;
     }
 
-    private int size(Node node) {
-        if (node == null) {
-            return 0;
-        } else {
-            return 1 + size(node.lb) + size(node.rt);
-        }
-    }
+    // private int size(Node node) {
+    // if (node == null) {
+    // return 0;
+    // } else {
+    // return 1 + size(node.lb) + size(node.rt);
+    // }
+    // }
 
     /**
      * add the point to the set (if it is not already in the set).
@@ -75,8 +81,14 @@ public class KdTree {
     }
 
     private Node insert(Node node, Point2D p, boolean vertcial) {
-        if (node == null)
-            return new Node(p, new RectHV(0, 0, 1, 1), null, null);
+        if (node == null){
+            size++;
+            if (node == root) {
+                return new Node(p, new RectHV(0, 0, 1, 1), null, null);
+            }else{
+                return new Node(p, null, null, null);
+            }
+        }
 
         if (p.equals(node.p))
             return node;
@@ -180,8 +192,45 @@ public class KdTree {
      * @return all points that are inside the rectangle
      */
     public Iterable<Point2D> range(RectHV rect) {
-        // TODO
-        return null;
+        RangeIterable<Point2D> rangeIterable = new RangeIterable<Point2D>();
+        rangeIterable.setRectHV(rect);
+        return rangeIterable;
+    }
+
+    private class RangeIterable<Point2D> implements Iterable<Point2D> {
+
+        private RectHV rectHV;
+        private Queue<Point2D> matchedQ = new Queue<Point2D>();
+
+        @Override
+        public Iterator<Point2D> iterator() {
+            matchedQ = match(rectHV, root, matchedQ);
+            return matchedQ.iterator();
+        }
+
+        public RectHV getRectHV() {
+            return rectHV;
+        }
+
+        public void setRectHV(RectHV rectHV) {
+            this.rectHV = rectHV;
+        }
+
+        private Queue<Point2D> match(RectHV rect, Node node,
+                Queue<Point2D> queue) {
+
+            if (node == null || !node.rectHV.intersects(rect)) {
+                return queue;
+            }
+
+            if (rect.contains(node.p)) {
+                queue.enqueue((Point2D) node.p);
+            }
+
+            queue = match(rect, node.lb, queue);
+            queue = match(rect, node.rt, queue);
+            return queue;
+        }
     }
 
     /**
@@ -190,8 +239,44 @@ public class KdTree {
      *         empty.
      */
     public Point2D nearest(Point2D p) {
-        // TOD
-        return null;
+        if (isEmpty()) {
+            return null;
+        }
+        Node nearesNode = nearest(root, p, root.p.distanceSquaredTo(p));
+        return nearesNode.p;
+    }
+
+    private Node nearest(Node node, Point2D p, double minDistance) {
+        
+        double min = minDistance;
+        if (node.p.distanceSquaredTo(p) < minDistance) {
+            min = node.p.distanceSquaredTo(p);
+        }
+        
+        double lbMin = min;
+        double rtMin = min;
+        Node lbNearest = node;
+        Node rtNearest = node;
+        
+        if (node.lb != null
+                && node.lb.rectHV.distanceSquaredTo(p) < min) {
+            lbNearest = nearest(node.lb, p, min);
+            lbMin = lbNearest.p.distanceSquaredTo(p);
+        }
+
+        if (node.rt != null
+                && node.rt.rectHV.distanceSquaredTo(p) < minDistance) {
+            rtNearest = nearest(node.rt, p, min);
+            rtMin = rtNearest.p.distanceSquaredTo(p);
+        }
+
+        if (lbMin <= rtMin && lbMin < min) {
+            return lbNearest;
+        } else if (rtMin < lbMin && rtMin < min) {
+            return rtNearest;
+        } else {
+            return node;
+        }
     }
 
     /**
@@ -212,10 +297,31 @@ public class KdTree {
         // simple test for draw
         kdTree = new KdTree();
         kdTree.insert(new Point2D(0.7, 0.2));
+        System.out.println(kdTree.size);
         kdTree.insert(new Point2D(0.5, 0.4));
+        System.out.println(kdTree.size);
         kdTree.insert(new Point2D(0.2, 0.3));
+        System.out.println(kdTree.size);
         kdTree.insert(new Point2D(0.4, 0.7));
+        System.out.println(kdTree.size);
         kdTree.insert(new Point2D(0.9, 0.6));
+        System.out.println(kdTree.size);
         kdTree.draw();
+
+        // simple test for draw
+        System.out.println(kdTree.nearest(new Point2D(0.3, 0.2)));
+        System.out.println(kdTree.nearest(new Point2D(0.95, 0.6)));
+        System.out.println(kdTree.nearest(new Point2D(0.95, 0.2)));
+        System.out.println(kdTree.nearest(new Point2D(0.1, 0.1)));
+
+        // test for range
+        System.out.println("----------------");
+        Iterable<Point2D> iterable = kdTree
+                .range(new RectHV(0.2, 0.2, 0.3, 0.3));
+        for (Point2D point2d : iterable) {
+            System.out.println(point2d);
+        }
+
     }
+
 }
